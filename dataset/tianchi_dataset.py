@@ -14,8 +14,8 @@ class TianchiDataSet(Dataset):
         self.img_root = img_root
         self.ann_root = ann_root
 
-        with open(data_list_file) as read:
-            self.img_names = [img[:-1] for img in read.readlines()]
+        with open(data_list_file, 'r', newline="\n") as read:
+            self.img_names = read.read().splitlines()
 
         # read class_indict
         json_file = class_names_file
@@ -34,9 +34,10 @@ class TianchiDataSet(Dataset):
         ann_path = os.path.join(self.ann_root, self.img_names[idx] + '.txt')
         img = Image.open(img_path).convert("RGB")
 
-        with open(ann_path) as ann_file:
-            anns = [line[:-1].split(',') for line in ann_file.readlines()]
+        with open(ann_path, mode="r", newline="\n") as ann_file:
+            anns = [line.split(',') for line in ann_file.read().splitlines()]
         boxes = [[int(ann[i]) for i in range(4)] for ann in anns]
+
         labels = [self.classes.index(ann[4]) for ann in anns]
 
         # convert everything into a torch.Tensor
@@ -76,4 +77,5 @@ if __name__ == '__main__':
     dataset = TianchiDataSet("E:\\tianchidataset\\defect_Images", "E:\\tianchidataset\\defect_labels_en",
                              "E:\\tianchidataset\\set\\traintrain.txt",
                              "E:\\tianchidataset\\defect_names.json")
-    dataset.get_height_and_width(0)
+
+    print(dataset.__getitem__(3222))

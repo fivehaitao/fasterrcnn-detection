@@ -1,4 +1,4 @@
-from torchvision.models.detection import FasterRCNN
+from model.swin_faster_rcnn import SwinFasterRCNN
 import torch
 import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
@@ -8,13 +8,28 @@ from torch.utils.data.dataloader import DataLoader
 
 from reference_utils import transforms
 from reference_utils.engine import train_one_epoch, evaluate
+from model.backbone.swin_fpn import swin_fpn_backbone
+from torchvision.models.detection.anchor_utils import AnchorGenerator
 
 
 def get_model(pretrain=True, num_classes=21):
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrain)
-    in_features = model.roi_heads.box_predictor.cls_score.in_features
-    # replace the pre-trained head with a new one
-    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+    backbone_with_fpn = swin_fpn_backbone('swin_t', trainable_layers=4).cuda()
+
+    anchor_sizes = ((32,), (64,), (128,), (256,), (512,))
+    aspect_ratios = ((0.5, 1.0, 2.0),) * len(anchor_sizes)
+    anchor_generator = AnchorGenerator(sizes=anchor_sizes,
+                                        aspect_ratios=aspect_ratios)
+
+    roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=['0', '1', '2', '3'],  # 在哪些特征层上进行RoIAlign pooling
+                                                    output_size=[7, 7],  # RoIAlign pooling输出特征矩阵尺寸
+                                                    sampling_ratio=2)  # 采样率
+
+    model = SwinFasterRCNN(backbone=backbone_with_fpn,
+                       num_classes=num_classes,
+                       min_size=840,
+                       max_size=1400,
+                       rpn_anchor_generator=anchor_generator,
+                       box_roi_pool=roi_pooler)
 
     return model
 
@@ -41,10 +56,10 @@ valid_dataset = TianchiDataSet(img_root="E:\\tianchidataset\\defect_Images",
                                class_names_file="E:\\tianchidataset\\defect_names.json",
                                transforms=get_transformer("val"))
 
-train_dataloader = DataLoader(train_dataset, 2,
+train_dataloader = DataLoader(train_dataset, 1,
                               shuffle=False, num_workers=0,
                               collate_fn=TianchiDataSet.collate_fn)
-valid_dataloader = DataLoader(valid_dataset, 2,
+valid_dataloader = DataLoader(valid_dataset, 1,
                               shuffle=False, num_workers=0,
                               collate_fn=TianchiDataSet.collate_fn)
 
@@ -55,7 +70,7 @@ model.to(device)
 
 weights = [param for param in model.parameters() if param.requires_grad]
 
-optimizer = torch.optim.SGD(weights, lr=0.005,
+optimizer = torch.optim.SGD(weights, lr=1e-4,
                             momentum=0.9, weight_decay=0.0005)
 lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=3, gamma=0.1)
 epoches = 10
@@ -63,4 +78,10 @@ epoches = 10
 for epoch in range(epoches):
     train_one_epoch(model, optimizer, train_dataloader, device, epoch, 50)
     lr_scheduler.step()
-    evaluate(model, valid_dataset, device)
+    evaluate(model, valid_dataloader, device)
+
+# i = 0
+# for img,labels in train_dataloader:
+#     print(i)
+#     i+=1
+#     pass
