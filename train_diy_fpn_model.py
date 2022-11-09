@@ -10,10 +10,12 @@ from reference_utils import transforms
 from reference_utils.engine import train_one_epoch, evaluate
 from model.backbone.swin_fpn import swin_fpn_backbone
 from torchvision.models.detection.anchor_utils import AnchorGenerator
+from torchvision.models.detection.backbone_utils import resnet_fpn_backbone
 
 
 def get_model(pretrain=True, num_classes=21):
-    backbone_with_fpn = swin_fpn_backbone('swin_t', trainable_layers=4).cuda()
+    # backbone_with_fpn = swin_fpn_backbone('swin_t', trainable_layers=4).cuda()
+    backbone_with_fpn = resnet_fpn_backbone('resnet50', True, trainable_layers=3)
 
     anchor_sizes = ((32,), (64,), (128,), (256,), (512,))
     aspect_ratios = ((0.5, 1.0, 2.0),) * len(anchor_sizes)
@@ -26,8 +28,6 @@ def get_model(pretrain=True, num_classes=21):
 
     model = SwinFasterRCNN(backbone=backbone_with_fpn,
                        num_classes=num_classes,
-                       min_size=840,
-                       max_size=1400,
                        rpn_anchor_generator=anchor_generator,
                        box_roi_pool=roi_pooler)
 
