@@ -14,3 +14,10 @@ pip install pycocotools==2.0.0
 pip install pycocotools-windows
 pip install einops
 ```
+
+The tickets of to train a detection model are follows:
+1. Using the weights of backbone pretrained by IMAGENET-1K, It is good to fix the problem of the AP is 0 in testing model. 
+2. Training the CNNs backbone need freeze the first stage.
+But Training the Swin backbone doesn't have to freeze any weight.
+3. Setting the anchor's aspect ratio of anchor generator need as far as possible to include all aspect of target. 
+If your 'loss_rpn_box_reg' is much bigger than other losses in training, you need think to find a more suitable parameter.
